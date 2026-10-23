@@ -1,0 +1,79 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gateway_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ChangeMeInProduction_PostgresSecret2026!}
+      POSTGRES_DB: ${POSTGRES_DB:-zero_trust_gateway}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-gateway_user} -d ${POSTGRES_DB:-zero_trust_gateway}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gateway-net
+
+  opa:
+    image: openpolicyagent/opa:1.2.0
+    restart: unless-stopped
+    command: ["run", "--server", "--addr=0.0.0.0:8181", "/policies/agent.rego"]
+    ports:
+      - "8181:8181"
+    volumes:
+      - ./policies:/policies:ro
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:8181/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - gateway-net
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      DATABASE_URL: postgresql+psycopg2://${POSTGRES_USER:-gateway_user}:${POSTGRES_PASSWORD:-ChangeMeInProduction_PostgresSecret2026!}@postgres:5432/${POSTGRES_DB:-zero_trust_gateway}
+      OPA_URL: http://opa:8181/v1/data/ai_gateway/allow
+      OPA_FAIL_CLOSED: ${OPA_FAIL_CLOSED:-0}
+      SECRET_KEY: ${SECRET_KEY:-insecure-dev-secret-key-change-in-production-min32chars!}
+      WORKLOAD_SIGNING_SECRET: ${WORKLOAD_SIGNING_SECRET:-insecure-dev-workload-secret-key-change-in-production-min32chars!}
+      AUDIT_CHAIN_SALT: ${AUDIT_CHAIN_SALT:-insecure-dev-audit-salt-change-in-production-min32chars!}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      opa:
+        condition: service_healthy
+    networks:
+      - gateway-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - gateway-net
+
+volumes:
+  pgdata:
+
+networks:
+  gateway-net:
+    driver: bridge
