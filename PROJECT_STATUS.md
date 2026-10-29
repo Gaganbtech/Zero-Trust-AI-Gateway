@@ -47,21 +47,28 @@ Detailed in [`SECURITY_REVIEW.md`](SECURITY_REVIEW.md):
 9. **Next.js Security Operations Dashboard**: Modern App Router console with Server-Sent Events (SSE) live telemetry, agent inventory, incident tracking, AI-CSPM cloud posture panel, and policy sandbox.
 10. **Containerization & CI/CD**: Multi-stage non-root Dockerfiles, Kubernetes manifests with NetworkPolicies, and a GitHub Actions workflow.
 11. **AI-CSPM (Cloud Security Posture Management)**: Native posture evaluation engine auditing cloud AI model inference endpoints, IMDSv2, S3 bucket access, Vector DB encryption, IAM least privilege, K8s PodSecurity, SafeTensors formats, and tamper-evident audit trails with copyable CLI remediation commands.
+12. **AI-CSPM Multi-Cloud Platform**: Complete posture platform with Cloud Environments, Agent Registry, Security Findings lifecycle (Severity, Status, Remediation verification), Framework compliance mapping (NIST AI RMF 1.0, CIS K8s v1.8, OWASP Top 10 LLM, MITRE ATLAS), and interactive scan history.
+13. **Zero-Trust LLM Streaming Proxy**: Multi-provider mediation supporting Google Gemini, OpenAI, Anthropic Claude, and an autonomous deterministic simulator. Inspects prompts for adversarial overrides, sanitizes PII/secrets via pre-flight DLP, inserts canary tokens, intercepts autonomous tool calls (`db_query`, `safe_http`), masks responses on the fly, and streams via SSE (`POST /api/v1/llm/chat`).
+14. **Model Context Protocol (MCP) JSON-RPC Gateway**: Standard JSON-RPC 2.0 endpoint (`POST /api/v1/mcp`) allowing developer AI agents (Claude Desktop, Cursor) to invoke internal tools safely under full OPA policy enforcement and recursive DLP.
+15. **Interactive Attack Studio & Real-Time Pipeline Visualizer**: 8 pre-configured attack vectors (Prompt Injection, DAN Persona Jailbreak, Workload Identity Spoofing, SSRF Cloud Metadata Theft, Destructive SQL, C2 Egress Exfiltration, Cross-Tenant Boundary Breach, and DLP Secret Leak) with 12-step execution tracing and microsecond latency metrics.
+16. **Modular SOC Dashboard Architecture**: Decoupled Next.js 16 frontend into 10 modular tab components and detailed inspection modals with full TypeScript type safety.
 
 ---
 
 ## 4. Files Added or Changed
 
 - **Configuration & Setup**:
-  - `app/core/config.py` (Pydantic Settings with production validation)
+  - `app/core/config.py` (Pydantic Settings with production validation & LLM configs)
   - `.env.example` (Complete environment template)
-  - `requirements.txt` (Updated pinned backend dependencies)
+  - `requirements.txt` (Pinned backend dependencies)
+  - `pytest.ini` (Pytest configuration & asyncio strict mode)
   - `.gitignore` (Updated ignore rules)
 - **Database & Migrations**:
-  - `app/database/models.py` (SQLAlchemy 2.0 ORM models including CSPMScanRecord)
+  - `app/database/models.py` (SQLAlchemy ORM models: Audit, Incidents, Agents, Users, CSPMScanRecord)
+  - `app/cspm/models.py` (CloudEnvironment, CSPMAgent, SecurityFinding, CSPMScanJob, ComplianceFramework)
   - `app/database/session.py` (Dynamic engine & session management)
-  - `app/database/init_db.py` (Multi-tenant seed script)
-  - `alembic/env.py` & `alembic/versions/` (Alembic migration history)
+  - `app/database/init_db.py` (Multi-tenant seed script with synthesized environments, findings, and frameworks)
+  - `alembic/env.py` & `alembic/versions/` (Alembic migration history including `a3c7e9f12b45_add_cspm_platform_models.py`)
 - **Security & Gateway Engine**:
   - `app/auth/security.py`, `app/auth/rbac.py`, `app/auth/dependencies.py`, `app/auth/workload.py`
   - `app/gateway/engine.py` (12-step zero-trust mediation sequence)
@@ -72,22 +79,27 @@ Detailed in [`SECURITY_REVIEW.md`](SECURITY_REVIEW.md):
   - `app/dlp/engine.py` (Recursive DLP inspection with Luhn validation)
   - `app/audit/tamper.py` & `app/audit/service.py` (HMAC-SHA256 hash chaining & verification)
   - `app/incidents/detector.py` (Incident correlation & alert engine)
-  - `app/cspm/` (`schemas.py`, `checks.py`, `scanner.py`, `service.py`, `__init__.py`) (AI-CSPM posture engine)
-  - `app/observability/metrics.py` & `app/observability/middleware.py` (Prometheus metrics & correlation)
-  - `app/api/v1/` (`agents.py`, `audit.py`, `auth.py`, `cspm.py`, `dashboard.py`, `health.py`, `incidents.py`, `policies.py`, `security.py`)
-
-  - `app/main.py` (FastAPI app entry point & legacy compatibility)
-- **Frontend Dashboard**:
-  - `frontend/` (Next.js 16, TypeScript, Tailwind CSS, Lucide icons, SSE stream consumer)
+  - `app/cspm/` (`checks.py`, `scanner.py`, `models.py`, `platform_schemas.py`, `platform_service.py`)
+  - `app/llm/` (`providers.py`, `proxy.py`, `schemas.py`)
+  - `app/mcp/` (`server.py`, `schemas.py`)
+  - `app/scenarios/` (`engine.py`)
+  - `app/observability/metrics.py` & `app/observability/middleware.py`
+  - `app/api/v1/` (`agents.py`, `audit.py`, `auth.py`, `cspm.py`, `cspm_platform.py`, `dashboard.py`, `health.py`, `incidents.py`, `llm.py`, `mcp.py`, `policies.py`, `security.py`, `simulator.py`)
+  - `app/main.py` (FastAPI app entry point & legacy compatibility, `/health`, `/healthz`)
+- **Frontend SOC Dashboard**:
+  - `frontend/app/components/` (`OverviewTab`, `EventsTab`, `IncidentsTab`, `AgentsTab`, `AttackStudioTab`, `CSPMTab`, `CSPMPlatformTab`, `MCPGatewayTab`, `PoliciesTab`, `TamperTab`, `EventDetailModal`, `IncidentDetailModal`, `Header`)
+  - `frontend/app/lib/api.ts` (Comprehensive typed API integration layer)
+  - `frontend/app/globals.css` (Glassmorphic dark-mode SOC design tokens)
+  - `frontend/app/page.tsx` (Decoupled main dashboard container)
 - **Policies & Tests**:
   - `policies/agent.rego` (Production Rego v1 policy)
   - `policies/agent_test.rego` (9 OPA unit tests)
-  - `tests/test_api_endpoints.py`, `tests/test_audit_hash_chain.py`, `tests/test_auth_workload.py`, `tests/test_dlp_and_scanners.py`, `tests/test_security.py`, `tests/test_sql_and_tenancy.py`, `tests/test_ssrf_and_network.py`
-  - `scripts/demo.sh` (End-to-end verification script)
+  - `tests/` (108 automated pytest tests across 12 modules: `test_api_endpoints.py`, `test_attack_studio.py`, `test_audit_hash_chain.py`, `test_auth_workload.py`, `test_cspm.py`, `test_cspm_platform.py`, `test_dlp_and_scanners.py`, `test_llm_proxy.py`, `test_mcp_gateway.py`, `test_security.py`, `test_sql_and_tenancy.py`, `test_ssrf_and_network.py`)
+  - `scripts/cloud_ai_agent.py` & `scripts/demo.sh`
 - **Infrastructure & Deployment**:
   - `Dockerfile` & `frontend/Dockerfile` (Multi-stage non-root containers)
   - `docker-compose.yml` (4-tier stack)
-  - `deploy/k8s/` (Kubernetes deployments & NetworkPolicies)
+  - `deploy/k8s/` (Kubernetes manifests, agent-deployment, NetworkPolicies)
   - `.github/workflows/ci.yml` (CI/CD pipeline)
 - **Documentation**:
   - `README.md`, `SECURITY_REVIEW.md`, `SECURITY_TEST_RESULTS.md`, `docs/architecture.md`, `docs/operations_runbook.md`, `PROJECT_STATUS.md`
@@ -156,8 +168,8 @@ PYTHONPATH=. alembic downgrade -1
 
 ```bash
 # Pytest automated test suite
-PYTHONPATH=. pytest -v --cov=app --cov-report=term-missing
-# Result: 61 passed in 32.90s (including 16 LLM proxy, MCP gateway, and Attack Studio tests)
+./.venv/bin/pytest -v
+# Result: 108 passed in 34.41s across 12 test modules (100% passing)
 
 # OPA Rego policy unit tests
 opa test policies/ -v

@@ -97,13 +97,60 @@ pg_restore -U gateway_user -h localhost -d zero_trust_gateway -v backup_file.dum
 
 ---
 
-## 4. Automated Testing Procedures
+## 4. Operational Playbooks: Specialized Engines
+
+### A. AI-CSPM Multi-Cloud Posture Operations
+- **Trigger a Posture Scan**:
+  ```bash
+  curl -s -X POST http://127.0.0.1:8000/api/v1/cspm-platform/scans \
+    -H "Content-Type: application/json" \
+    -d '{"environment_id": "<env_uuid>", "scan_type": "FULL_AUDIT"}'
+  ```
+- **Fetch Compliance Framework Breakdown**:
+  ```bash
+  curl -s http://127.0.0.1:8000/api/v1/cspm-platform/frameworks/nist-ai-rmf
+  ```
+- **Remediating Findings**: Each finding in `GET /api/v1/cspm-platform/findings` includes an executable CLI remediation block (e.g. AWS CLI, `kubectl`, or Terraform) ready for copy-paste or automated execution.
+
+### B. Zero-Trust LLM Proxy Operations
+- **Supported Providers**: Google Gemini, Anthropic Claude, OpenAI, and Deterministic Simulator.
+- **Configuring Keys**: Set `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENAI_API_KEY` in `.env`.
+- **Pre-Flight Ingress**: Automatically redacts credentials/PII and plants canary tokens before dispatching to upstream LLMs.
+- **Tool Interception**: When an LLM requests tool execution (`db_query`, `safe_http`), the gateway intercepts the call, validates it against OPA, executes safely, and masks results before the model resumes streaming.
+
+### C. Model Context Protocol (MCP) Integration
+- **Endpoint**: `POST /api/v1/mcp` (Standard JSON-RPC 2.0).
+- **Configure Claude Desktop (`claude_desktop_config.json`)**:
+  ```json
+  {
+    "mcpServers": {
+      "zero-trust-gateway": {
+        "url": "http://127.0.0.1:8000/api/v1/mcp"
+      }
+    }
+  }
+  ```
+- **Guarantees**: Even if an external agent prompts Claude or Cursor to execute destructive operations or exfiltrate data, all tool calls route through OPA default-deny authorization, SSRF IP validation, and recursive DLP sanitization.
+
+### D. Interactive Attack Studio Operations
+- **Available Vectors**: Prompt Injection, DAN Jailbreak, Workload Identity Spoofing, SSRF Cloud Metadata Theft, Destructive SQL, C2 Exfiltration, Cross-Tenant Breach, DLP Secret Leak.
+- **Run Scenario**:
+  ```bash
+  curl -s -X POST http://127.0.0.1:8000/api/v1/simulator/run \
+    -H "Content-Type: application/json" \
+    -d '{"scenario_id": "attack-ssrf-metadata"}'
+  ```
+- **Evaluation**: Returns a 12-step trace detailing which step blocked the attack, execution latency per step in microseconds, and STRIDE remediation advice.
+
+---
+
+## 5. Automated Testing Procedures
 
 Execute all test suites using the following commands:
 
 ```bash
-# 1. Run all unit and integration security tests with code coverage
-PYTHONPATH=. pytest -v --cov=app --cov-report=term-missing
+# 1. Run all 108 unit, integration, and security tests
+./.venv/bin/pytest -v
 
 # 2. Run OPA policy unit tests
 opa test policies/ -v
@@ -117,7 +164,7 @@ cd frontend && npm run build && cd ..
 
 ---
 
-## 5. Security Incident Response Runbooks
+## 6. Security Incident Response Runbooks
 
 ### Runbook 1: Destructive Operation Attempt (`DESTRUCTIVE_OPERATION_ATTEMPT`)
 - **Detection**: An agent requested `DROP`, `DELETE`, `UPDATE`, `ALTER`, or `TRUNCATE`.
@@ -143,7 +190,7 @@ cd frontend && npm run build && cd ..
 
 ---
 
-## 6. Production Readiness Checklist
+## 7. Production Readiness Checklist
 
 | Category | Requirement | Implementation Status |
 | :--- | :--- | :--- |
@@ -159,5 +206,9 @@ cd frontend && npm run build && cd ..
 | **DLP** | Luhn algorithm credit card validation | Confirmed (`luhn_checksum_valid`) |
 | **Audit** | Cryptographic HMAC-SHA256 tamper-evident hash chain | Confirmed (`app/audit/tamper.py`) |
 | **Audit** | Real-time SSE streaming of security events | Confirmed (`app/api/v1/dashboard.py`) |
-| **Frontend** | Next.js App Router, React, TypeScript, Tailwind CSS | Confirmed (`frontend/`) |
-| **Testing** | Automated tests across all security domains (38 pytest + 9 OPA) | Confirmed (100% passing) |
+| **LLM Mediation** | Multi-provider streaming proxy with canary checks & pre-flight DLP | Confirmed (`app/llm/proxy.py`) |
+| **MCP Protocol** | Standard JSON-RPC 2.0 tool server with zero-trust mediation | Confirmed (`app/mcp/server.py`) |
+| **Attack Studio**| 8 attack vector scenarios with microsecond 12-step tracing | Confirmed (`app/scenarios/engine.py`) |
+| **CSPM Platform**| Multi-cloud audit across NIST AI RMF, CIS K8s, OWASP, MITRE ATLAS | Confirmed (`app/cspm/platform_service.py`) |
+| **Frontend** | Next.js 16 App Router SOC console with 10 dedicated security tabs | Confirmed (`frontend/`) |
+| **Testing** | Automated tests across all security domains (108 pytest + 9 OPA) | Confirmed (100% passing) |

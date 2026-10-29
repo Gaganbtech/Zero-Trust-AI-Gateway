@@ -147,8 +147,8 @@ docker compose up -d --build
 The repository includes a comprehensive test suite covering all zero-trust layers:
 
 ```bash
-# 1. Run all 45 backend, security, and AI-CSPM tests with code coverage
-PYTHONPATH=. pytest -v --cov=app --cov-report=term-missing
+# 1. Run all 108 backend, security, attack studio, and AI-CSPM tests
+./.venv/bin/pytest -v
 
 # 2. Run all 9 OPA Rego policy unit tests
 opa test policies/ -v
@@ -206,6 +206,31 @@ curl -sS -X POST localhost:8000/api/v1/cspm/scan \
   -d '{"cloud_environment":"AWS / EKS Production (us-east-1)"}'
 ```
 
+### G. Interactive Attack Studio (12-Step Pipeline Tracing)
+```bash
+curl -sS -X POST localhost:8000/api/v1/simulator/run \
+  -H 'Content-Type: application/json' \
+  -d '{"scenario_id":"attack-prompt-injection"}'
+```
+
+### H. Zero-Trust LLM Streaming Proxy (SSE Stream with Pre-flight DLP)
+```bash
+curl -N -X POST localhost:8000/api/v1/llm/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"provider":"simulator","messages":[{"role":"user","content":"Fetch customer list"}],"tenant_id":"tenant-alpha"}'
+```
+
+### I. Model Context Protocol (MCP) JSON-RPC 2.0 Gateway
+```bash
+curl -sS -X POST localhost:8000/api/v1/mcp \
+  -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"db_query","arguments":{"table":"customers","operation":"SELECT"}},"id":1}'
+```
+
+### J. Multi-Cloud AI-CSPM Platform Inventory & Posture
+```bash
+curl -sS localhost:8000/api/v1/cspm-platform/summary
+```
 
 ---
 
@@ -220,30 +245,41 @@ zero-trust-ai-gateway/
 │   │   ├── agents.py              # Agent inventory & prompt/tool execution
 │   │   ├── audit.py               # Audit queries & tamper verification
 │   │   ├── auth.py                # Human login & workload token issuance
+│   │   ├── cspm.py                # Fast AI-CSPM posture assessment
+│   │   ├── cspm_platform.py       # Multi-cloud environments, findings & scans
 │   │   ├── dashboard.py           # Metrics summary & SSE live stream
-│   │   ├── health.py              # Liveness and readiness probes
+│   │   ├── health.py              # Liveness and readiness probes (/health, /healthz)
 │   │   ├── incidents.py           # Correlated security incidents
+│   │   ├── llm.py                 # Zero-trust LLM proxy & SSE streaming
+│   │   ├── mcp.py                 # Model Context Protocol (MCP) JSON-RPC 2.0
 │   │   ├── policies.py            # OPA policy validation & records
-│   │   └── security.py            # Direct prompt scan & DLP endpoints
+│   │   ├── security.py            # Direct prompt scan & DLP endpoints
+│   │   └── simulator.py           # Attack studio scenario runner
 │   ├── auth/                      # Workload identity, JWTs, RBAC
 │   ├── core/                      # Pydantic v2 settings & validation
+│   ├── cspm/                      # AI-CSPM posture checks, schemas & platform service
 │   ├── database/                  # SQLAlchemy 2.x models, session, seed
 │   ├── dlp/                       # Recursive DLP engine & Luhn check
 │   ├── gateway/                   # 12-step zero-trust mediation engine
 │   ├── incidents/                 # Automated incident correlation detector
+│   ├── llm/                       # LLM mediation proxy (Gemini, Claude, OpenAI, Sim)
+│   ├── mcp/                       # Model Context Protocol (MCP) server & schemas
 │   ├── network/                   # Controlled HTTP client & SSRF defense
 │   ├── observability/             # Prometheus metrics & correlation middleware
 │   ├── policies/                  # Async OPA client & local fallback
 │   ├── scanners/                  # Prompt injection heuristics scanner
+│   ├── scenarios/                 # Attack studio scenarios & step execution engine
 │   ├── schemas/                   # Pydantic request/response schemas
 │   ├── tools/                     # Tool registry, parameterized DB, weather
 │   └── main.py                    # Application entry point & legacy compat
 ├── deploy/k8s/                    # Kubernetes manifests & NetworkPolicies
 ├── docs/                          # Architecture & Operations runbooks
-├── frontend/                      # Next.js 16 App Router dashboard (React/TS/Tailwind)
+├── frontend/                      # Next.js 16 App Router SOC dashboard
+│   ├── app/components/            # 10 modular tab panels (Overview, Attack Studio, CSPM, MCP, etc.)
+│   └── app/lib/                   # Typed API clients & SSE listeners
 ├── policies/                      # OPA Rego v1 policies & unit tests
-├── scripts/demo.sh                # End-to-end security demo script
-├── tests/                         # Pytest test suite (38 automated tests)
+├── scripts/                       # Autonomous agent & end-to-end demo scripts
+├── tests/                         # Pytest test suite (108 automated tests across 12 modules)
 ├── docker-compose.yml             # Full 4-tier containerized stack
 ├── Dockerfile                     # Multi-stage non-root backend image
 └── requirements.txt               # Pinned Python dependencies
