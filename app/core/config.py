@@ -95,6 +95,17 @@ class Settings(BaseSettings):
         ]
     )
 
+    # LLM & Multi-Provider Settings
+    GEMINI_API_KEY: str | None = Field(default=None, description="Google Gemini API key")
+    OPENAI_API_KEY: str | None = Field(default=None, description="OpenAI API key")
+    ANTHROPIC_API_KEY: str | None = Field(default=None, description="Anthropic API key")
+    DEFAULT_LLM_PROVIDER: str = Field(default="mock", description="Default provider: mock, gemini, openai, anthropic")
+    DEFAULT_LLM_MODEL: str = Field(default="gemini-3.6-flash", description="Default LLM model name")
+
+    # Model Context Protocol (MCP) Gateway Settings
+    MCP_ENABLED: bool = Field(default=True, description="Enable Zero-Trust Model Context Protocol gateway")
+    MCP_PROTOCOL_VERSION: str = Field(default="2024-11-05", description="MCP specification version")
+
     # Validation
     @field_validator("OPA_FAIL_CLOSED", mode="before")
     @classmethod

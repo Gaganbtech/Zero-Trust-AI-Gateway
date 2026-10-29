@@ -17,7 +17,7 @@ INJECTION_RULES = [
     # 1. Instruction overrides
     (
         "PROMPT_INJECTION_SUSPECTED",
-        re.compile(r"\b(ignore|disregard|forget|bypass|override)\s+(all\s+)?(previous|prior|above|system)\s+(instructions|prompts|rules|commands|constraints)\b", re.I),
+        re.compile(r"\b(ignore|disregard|forget|bypass|override)\s+(all\s+)?(previous\s+|prior\s+|above\s+|system\s+)?(instructions|prompts|rules|commands|constraints|guidelines)\b", re.I),
         0.95,
         "Instruction override directive detected"
     ),

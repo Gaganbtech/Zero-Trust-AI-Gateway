@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-ai-agent-demo
+  namespace: zero-trust-security
+  labels:
+    app: zero-trust-gateway
+    tier: agent-workload
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zero-trust-gateway
+      tier: agent-workload
+  template:
+    metadata:
+      labels:
+        app: zero-trust-gateway
+        tier: agent-workload
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: cloud-agent
+          image: python:3.12-slim
+          command:
+            - /bin/sh
+            - -c
+            - |
+              pip install --no-cache-dir httpx pyjwt
+              python scripts/cloud_ai_agent.py --platform ${CLOUD_PLATFORM:-aws} --mode ${AGENT_MODE:-continuous} --gateway-url ${GATEWAY_URL:-http://zero-trust-gateway-backend:8000}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          env:
+            - name: CLOUD_PLATFORM
+              value: "aws"  # Options: aws, azure, gcp, all
+            - name: AGENT_MODE
+              value: "continuous"  # Options: continuous, demo
+            - name: GATEWAY_URL
+              value: "http://zero-trust-gateway-backend:8000"
+            - name: WORKLOAD_SIGNING_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gateway-secrets
+                  key: WORKLOAD_SIGNING_SECRET

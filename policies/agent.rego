@@ -7,10 +7,19 @@ default allow := false
 default reason := "default_deny_no_rule_matched"
 default requires_human_approval := false
 
-allowed_agents := {"demo-agent", "agent-analytics-01", "agent-beta-support"}
+allowed_agents := {
+    "demo-agent",
+    "agent-analytics-01",
+    "agent-beta-support",
+    "agent-aws-workload-01",
+    "agent-azure-workload-01",
+    "agent-gcp-workload-01",
+    "agent-gcp-bi"
+}
 
 # Approved columns for db_query
 allowed_db_columns := {"id", "name", "email", "phone", "card_number", "account_balance"}
+
 
 # Allow rule 1: Read customer records for authorized agent within same tenant
 allow if {
@@ -113,7 +122,7 @@ requires_human_approval if {
 
 # Helpers
 valid_db_destination if {
-    input.destination in {"sqlite://demo", "internal://database", "postgresql://internal"}
+    input.destination in {"sqlite://demo", "internal://database", "postgresql://internal", "postgresql://internal-db"}
 }
 
 valid_http_method if {

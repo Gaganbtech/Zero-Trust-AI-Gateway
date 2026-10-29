@@ -31,6 +31,10 @@ from app.api.v1.incidents import router as incidents_router
 from app.api.v1.policies import router as policies_router
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.cspm import router as cspm_router
+from app.api.v1.llm import router as llm_router
+from app.api.v1.mcp import router as mcp_router
+from app.api.v1.simulator import router as simulator_router
+from app.api.v1.cspm_platform import router as cspm_platform_router
 
 
 @asynccontextmanager
@@ -92,6 +96,10 @@ app.include_router(incidents_router)
 app.include_router(policies_router)
 app.include_router(dashboard_router)
 app.include_router(cspm_router)
+app.include_router(llm_router)
+app.include_router(mcp_router)
+app.include_router(simulator_router)
+app.include_router(cspm_platform_router)
 
 
 
@@ -108,6 +116,7 @@ async def metrics():
 # =====================================================================
 
 @app.get("/health", tags=["Legacy Compatibility"])
+@app.get("/healthz", tags=["Legacy Compatibility"])
 async def legacy_health():
     return {
         "status": "ok",

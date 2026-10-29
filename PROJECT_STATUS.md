@@ -157,7 +157,7 @@ PYTHONPATH=. alembic downgrade -1
 ```bash
 # Pytest automated test suite
 PYTHONPATH=. pytest -v --cov=app --cov-report=term-missing
-# Result: 45 passed in 20.09s (including 7 AI-CSPM tests)
+# Result: 61 passed in 32.90s (including 16 LLM proxy, MCP gateway, and Attack Studio tests)
 
 # OPA Rego policy unit tests
 opa test policies/ -v
@@ -165,8 +165,7 @@ opa test policies/ -v
 
 # Next.js frontend production build
 cd frontend && npm run build
-# Result: Compiled successfully in 544ms with zero TypeScript or lint errors
-
+# Result: Compiled successfully in 427ms with zero TypeScript or lint errors
 ```
 
 ---
